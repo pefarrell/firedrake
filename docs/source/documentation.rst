@@ -50,6 +50,7 @@ finite element problems in Firedrake.
 .. toctree::
    :maxdepth: 2
 
+   architecture
    variational-problems
    solving-interface
    boundary_conditions
