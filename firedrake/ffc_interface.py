@@ -23,6 +23,7 @@ from pyop2.caching import DiskCached
 from pyop2.op2 import Kernel
 from pyop2.mpi import MPI
 from pyop2.coffee.ast_base import PreprocessNode, Root
+from pyop2 import configuration as configuration
 
 import fiat_utils
 import functionspace
@@ -191,6 +192,13 @@ class FFCKernel(DiskCached):
             needs_orientations = self._needs_orientations(elements)
             for it, kernel in zip(fd.preprocessed_form.integrals(), ffc_tree):
                 # Set optimization options
+                # vect = int(configuration['vect'])
+                # split = configuration['split']
+                # {'licm': configuration['licm'],
+                #    'slice': None,
+                #    'vect': (ap.V_OP_UAJ, vect) if vect >= 0 else None, # (ap.V_OP_UAJ, 3)
+                #    'ap': configuration['ap'],
+                #    'split': split if split[0] > 1 and split[1] > 0 else None} # (6, 7)
                 opts = {} if it.integral_type() not in ['cell'] else parameters["coffee"]
                 kernels.append((Kernel(Root([incl, kernel]), '%s_%s_integral_0_%s' %
                                        (name, it.integral_type(), it.subdomain_id()), opts, inc),
