@@ -20,6 +20,7 @@ from pyop2.caching import DiskCached
 from pyop2.op2 import Kernel
 from pyop2.mpi import MPI
 from pyop2.ir.ast_base import PreprocessNode, Root
+from pyop2 import configuration as configuration
 
 import types
 
@@ -153,12 +154,20 @@ class FFCKernel(DiskCached):
         kernels = []
         for it, kernel in zip(form.form_data().preprocessed_form.integrals(), ffc_tree):
             # Set optimization options
-            opts = {} if it.domain_type() not in ['cell'] else \
-                   {'licm': False,
+            vect = int(configuration['vect'])
+            split = configuration['split']
+            opts = {} if ida.domain_type not in ['cell'] else \
+                   {'licm': configuration['licm'],
                     'tile': None,
-                    'vect': None,
-                    'ap': False,
-                    'split': None}
+                    'vect': (ap.V_OP_UAJ, vect) if vect >= 0 else None, # (ap.V_OP_UAJ, 3)
+                    'ap': configuration['ap'],
+                    'split': split if split[0] > 1 and split[1] > 0 else None} # (6, 7)
+            # opts = {} if it.domain_type() not in ['cell'] else \
+            #        {'licm': configuration['licm'],
+            #         'tile': None,
+            #         'vect': None,
+            #         'ap': configuration['ap'],
+            #         'split': None}
             kernels.append(Kernel(Root([incl, kernel]), '%s_%s_integral_0_%s' %
                            (name, it.domain_type(), it.domain_id()), opts, inc))
         self.kernels = tuple(kernels)
