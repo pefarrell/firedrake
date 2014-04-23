@@ -168,6 +168,7 @@ class Mesh(object):
         dim = kwargs.get("dim", None)
         reorder = kwargs.get("reorder", parameters["reorder_meshes"])
         periodic_coords = kwargs.get("periodic_coords", None)
+        distribute = kwargs.get("distribute", True)
 
         # A cache of function spaces that have been built on this mesh
         self._cache = {}
@@ -176,7 +177,8 @@ class Mesh(object):
         if isinstance(meshfile, PETSc.DMPlex):
             self.name = "plexmesh"
             self._from_dmplex(meshfile, dim, reorder,
-                              periodic_coords=periodic_coords)
+                              periodic_coords=periodic_coords,
+                              distribute=distribute)
             return
 
         basename, ext = os.path.splitext(meshfile)
@@ -205,7 +207,7 @@ class Mesh(object):
         self._coordinate_function = value
 
     def _from_dmplex(self, plex, geometric_dim,
-                     reorder, periodic_coords=None):
+                     reorder, periodic_coords=None, distribute=True):
         """ Create mesh from DMPlex object """
 
         self._plex = plex
@@ -222,7 +224,7 @@ class Mesh(object):
             geometric_dim = plex.getDimension()
 
         # Distribute the dm to all ranks
-        if op2.MPI.comm.size > 1:
+        if op2.MPI.comm.size > 1 and distribute:
             self.parallel_sf = plex.distribute(overlap=1)
 
         self._plex = plex
