@@ -165,7 +165,7 @@ class FFCKernel(DiskCached):
         for it, kernel in zip(form.form_data().preprocessed_form.integrals(), ffc_tree):
             # Set optimization options
             opts = {} if it.integral_type() not in ['cell'] else \
-                   {'licm': False,
+                   {'licm': 0,
                     'slice': None,
                     'vect': None,
                     'ap': False,
