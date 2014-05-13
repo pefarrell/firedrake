@@ -13,10 +13,12 @@ __all__ = ['MeshHierarchy', 'FunctionSpaceHierarchy', 'FunctionHierarchy']
 
 class MeshHierarchy(mesh.Mesh):
     """Build a hierarchy of meshes by uniformly refining a coarse mesh"""
-    def __init__(self, m, refinement_levels):
+    def __init__(self, m, refinement_levels, reorder=None):
         """
         :arg m: the coarse :class:`~.Mesh` to refine
         :arg refinement_levels: the number of levels of refinement
+        :arg reorder: optional flag indicating whether to reorder the
+             refined meshes.
         """
         m._plex.setRefinementUniform(True)
         dm_hierarchy = m._plex.refineHierarchy(refinement_levels)
@@ -29,7 +31,7 @@ class MeshHierarchy(mesh.Mesh):
             dm.removeLabel("op2_non_core")
             dm.removeLabel("op2_exec_halo")
 
-        self._hierarchy = [m] + [mesh.Mesh(dm, distribute=False)
+        self._hierarchy = [m] + [mesh.Mesh(dm, distribute=False, reorder=reorder)
                                  for i, dm in enumerate(dm_hierarchy)]
 
         self._ufl_cell = m.ufl_cell()
