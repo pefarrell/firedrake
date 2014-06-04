@@ -31,7 +31,8 @@ class MeshHierarchy(mesh.Mesh):
             dm.removeLabel("op2_non_core")
             dm.removeLabel("op2_exec_halo")
 
-        self._hierarchy = [m] + [mesh.Mesh(dm, distribute=False, reorder=reorder)
+        self._hierarchy = [m] + [mesh.Mesh(dm, dim=m.ufl_cell().geometric_dimension(),
+                                           distribute=False, reorder=reorder)
                                  for i, dm in enumerate(dm_hierarchy)]
 
         self._ufl_cell = m.ufl_cell()
