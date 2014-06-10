@@ -540,7 +540,7 @@ def _assemble(f, tensor=None, bcs=None):
                 trbc = [bc for bc in bcs if bc.function_space().index == j]
             elif is_mat:
                 tsbc, trbc = bcs, bcs
-            if integral_type == 'cell':
+            if integral_type in ('cell', 'reference_cell'):
                 with timed_region("Assemble cells"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.cell_node_map(tsbc),
@@ -570,7 +570,7 @@ def _assemble(f, tensor=None, bcs=None):
                     except MapValueError:
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
-            elif integral_type in ['exterior_facet', 'exterior_facet_vert']:
+            elif integral_type in ('exterior_facet', 'exterior_facet_vert', 'reference_exterior_facet', 'reference_exterior_facet_vert'):
                 with timed_region("Assemble exterior facets"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.exterior_facet_node_map(tsbc),
@@ -598,7 +598,7 @@ def _assemble(f, tensor=None, bcs=None):
                     except MapValueError:
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
-            elif integral_type in ['exterior_facet_top', 'exterior_facet_bottom']:
+            elif integral_type in ('exterior_facet_top', 'exterior_facet_bottom', 'reference_exterior_facet_top', 'reference_exterior_facet_bottom'):
                 with timed_region("Assemble exterior facets"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.cell_node_map(tsbc),
@@ -634,7 +634,7 @@ def _assemble(f, tensor=None, bcs=None):
                         except MapValueError:
                             raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
-            elif integral_type in ['interior_facet', 'interior_facet_vert']:
+            elif integral_type in ('interior_facet', 'interior_facet_vert', 'reference_interior_facet', 'reference_interior_facet_vert'):
                 with timed_region("Assemble interior facets"):
                     if op2.MPI.parallel:
                         raise \
@@ -665,7 +665,7 @@ def _assemble(f, tensor=None, bcs=None):
                     except MapValueError:
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
-            elif integral_type == 'interior_facet_horiz':
+            elif integral_type in ('interior_facet_horiz', 'reference_interior_facet_horiz'):
                 with timed_region("Assemble interior facets"):
                     if op2.MPI.parallel:
                         raise \
