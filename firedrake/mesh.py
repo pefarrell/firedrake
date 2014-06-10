@@ -165,11 +165,11 @@ class _Facets(object):
             if integral_type == "exterior_facet_topbottom":
                 return [(op2.ON_BOTTOM, self.bottom_set),
                         (op2.ON_TOP, self.bottom_set)]
-            elif integral_type == "exterior_facet_bottom":
+            elif integral_type in ("exterior_facet_bottom", "reference_exterior_facet_bottom"):
                 return [(op2.ON_BOTTOM, self.bottom_set)]
-            elif integral_type == "exterior_facet_top":
+            elif integral_type in ("exterior_facet_top", "reference_exterior_facet_top"):
                 return [(op2.ON_TOP, self.bottom_set)]
-            elif integral_type == "interior_facet_horiz":
+            elif integral_type in ("interior_facet_horiz", "reference_interior_facet_horiz"):
                 return self.bottom_set
             else:
                 return self.set
@@ -693,8 +693,16 @@ class ExtrudedMesh(Mesh):
         self._ds_v = ufl.Measure('exterior_facet_vert', domain=self, subdomain_data=self.coordinates)
         self._dS_h = ufl.Measure('interior_facet_horiz', domain=self, subdomain_data=self.coordinates)
         self._dS_v = ufl.Measure('interior_facet_vert', domain=self, subdomain_data=self.coordinates)
+        self._dx_0 = ufl.ReferenceMeasure('reference_cell', domain=self, subdomain_data=self.coordinates)
+        self._ds_0 = ufl.ReferenceMeasure('reference_exterior_facet', domain=self, subdomain_data=self.coordinates)
+        self._dS_0 = ufl.ReferenceMeasure('reference_interior_facet', domain=self, subdomain_data=self.coordinates)
+        self._ds_t_0 = ufl.ReferenceMeasure('reference_exterior_facet_top', domain=self, subdomain_data=self.coordinates)
+        self._ds_b_0 = ufl.ReferenceMeasure('reference_exterior_facet_bottom', domain=self, subdomain_data=self.coordinates)
+        self._ds_v_0 = ufl.ReferenceMeasure('reference_exterior_facet_vert', domain=self, subdomain_data=self.coordinates)
+        self._dS_h_0 = ufl.ReferenceMeasure('reference_interior_facet_horiz', domain=self, subdomain_data=self.coordinates)
+        self._dS_v_0 = ufl.ReferenceMeasure('reference_interior_facet_vert', domain=self, subdomain_data=self.coordinates)
         # Set the subdomain_data on all the default measures to this coordinate field.
-        for measure in [ufl.ds, ufl.dS, ufl.dx, ufl.ds_t, ufl.ds_b, ufl.ds_v, ufl.dS_h, ufl.dS_v]:
+        for measure in (ufl.ds, ufl.dS, ufl.dx, ufl.ds_t, ufl.ds_b, ufl.ds_v, ufl.dS_h, ufl.dS_v, ufl.ds_0, ufl.dS_0, ufl.dx_0, ufl.ds_t_0, ufl.ds_b_0, ufl.ds_v_0, ufl.dS_h_0, ufl.dS_v_0):
             measure._subdomain_data = self.coordinates
             measure._domain = self.ufl_domain()
 

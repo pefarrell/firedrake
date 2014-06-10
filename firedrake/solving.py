@@ -429,21 +429,21 @@ def _assemble(f, tensor=None, bcs=None):
         # computation.
         for integral in integrals:
             integral_type = integral.integral_type()
-            if integral_type == "cell":
+            if integral_type in ("cell", "reference_cell"):
                 cell_domains.append(op2.ALL)
-            elif integral_type == "exterior_facet":
+            elif integral_type in ("exterior_facet", "reference_exterior_facet"):
                 exterior_facet_domains.append(op2.ALL)
-            elif integral_type == "interior_facet":
+            elif integral_type in ("interior_facet", "reference_interior_facet"):
                 interior_facet_domains.append(op2.ALL)
-            elif integral_type == "exterior_facet_bottom":
+            elif integral_type in ("exterior_facet_bottom", "reference_exterior_facet_bottom"):
                 cell_domains.append(op2.ON_BOTTOM)
-            elif integral_type == "exterior_facet_top":
+            elif integral_type in ("exterior_facet_top", "reference_exterior_facet_top"):
                 cell_domains.append(op2.ON_TOP)
-            elif integral_type == "exterior_facet_vert":
+            elif integral_type in ("exterior_facet_vert", "reference_exterior_facet_vert"):
                 exterior_facet_domains.append(op2.ALL)
-            elif integral_type == "interior_facet_horiz":
+            elif integral_type in ("interior_facet_horiz", "reference_interior_facet_horiz"):
                 cell_domains.append(op2.ON_INTERIOR_FACETS)
-            elif integral_type == "interior_facet_vert":
+            elif integral_type in ("interior_facet_vert", "reference_interior_facet_vert"):
                 interior_facet_domains.append(op2.ALL)
             else:
                 raise RuntimeError('Unknown integral type "%s"' % integral_type)
