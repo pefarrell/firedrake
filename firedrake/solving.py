@@ -541,7 +541,7 @@ def _assemble(f, tensor=None, bcs=None):
             elif is_mat:
                 tsbc, trbc = bcs, bcs
             if integral_type == 'cell':
-                with timed_region("Assemble cells"):
+                #with timed_region("Assemble cells"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.cell_node_map(tsbc),
                                          lambda s: s.cell_node_map(trbc),
@@ -571,7 +571,7 @@ def _assemble(f, tensor=None, bcs=None):
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
             elif integral_type in ['exterior_facet', 'exterior_facet_vert']:
-                with timed_region("Assemble exterior facets"):
+                #with timed_region("Assemble exterior facets"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.exterior_facet_node_map(tsbc),
                                          lambda s: s.exterior_facet_node_map(trbc),
@@ -599,7 +599,7 @@ def _assemble(f, tensor=None, bcs=None):
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
             elif integral_type in ['exterior_facet_top', 'exterior_facet_bottom']:
-                with timed_region("Assemble exterior facets"):
+                #with timed_region("Assemble exterior facets"):
                     if is_mat:
                         tensor_arg = mat(lambda s: s.cell_node_map(tsbc),
                                          lambda s: s.cell_node_map(trbc),
@@ -635,7 +635,7 @@ def _assemble(f, tensor=None, bcs=None):
                             raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
             elif integral_type in ['interior_facet', 'interior_facet_vert']:
-                with timed_region("Assemble interior facets"):
+                #with timed_region("Assemble interior facets"):
                     if op2.MPI.parallel:
                         raise \
                             NotImplementedError(
@@ -666,7 +666,7 @@ def _assemble(f, tensor=None, bcs=None):
                         raise RuntimeError("Integral measure does not match measure of all coefficients/arguments")
 
             elif integral_type == 'interior_facet_horiz':
-                with timed_region("Assemble interior facets"):
+                #with timed_region("Assemble interior facets"):
                     if op2.MPI.parallel:
                         raise \
                             NotImplementedError(
@@ -704,7 +704,7 @@ def _assemble(f, tensor=None, bcs=None):
         # to apply bcs to a block which is otherwise zero, and
         # therefore does not have an associated kernel.
         if bcs is not None and is_mat:
-            with timed_region('DirichletBC apply'):
+            #with timed_region('DirichletBC apply'):
                 for bc in bcs:
                     fs = bc.function_space()
                     if isinstance(fs, functionspace.MixedFunctionSpace):
