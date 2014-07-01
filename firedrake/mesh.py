@@ -765,7 +765,11 @@ class UnitSquareMesh(Mesh):
         boundary = PETSc.DMPlex().create(MPI.comm)
         boundary.setDimension(1)
         boundary.createSquareBoundary([0., 0.], [1., 1.], [nx, ny])
-        plex = PETSc.DMPlex().generate(boundary)
+        # Options to triangle mesh generator telling it not to add any
+        # additional Steiner points (and to always put in edges the
+        # "same" way).  This produces a structured mesh of the points
+        # specified above.
+        plex = PETSc.DMPlex().generate(boundary, options="pqezQYSl")
 
         # Apply boundary IDs
         plex.createLabel("boundary_ids")
