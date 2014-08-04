@@ -51,3 +51,4 @@ ffc_parameters['pyop2-ir'] = True
 parameters.add(Parameters("form_compiler", **ffc_parameters))
 
 parameters["reorder_meshes"] = True
+parameters["partitioner"] = "chaco"

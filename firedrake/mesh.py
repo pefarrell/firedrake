@@ -202,7 +202,8 @@ class Mesh(object):
     """A representation of mesh topology and geometry."""
 
     @timed_function("Build mesh")
-    def __init__(self, filename, dim=None, periodic_coords=None, plex=None, reorder=None):
+    def __init__(self, filename, dim=None, periodic_coords=None, plex=None,
+                 reorder=None, partitioner=None):
         """
         :param filename: the mesh file to read.  Supported mesh formats
                are Gmsh (extension ``msh``) and triangle (extension
@@ -222,6 +223,10 @@ class Mesh(object):
                meshes for better cache locality.  If not supplied the
                default value in :py:data:`parameters["reorder_meshes"]`
                is used.
+        :param partitioner: graph partitioner to use for parallel mesh
+               decomposition (``'chaco'`` or ``'metis'``). If not supplied
+               the default value in :py:data:`parameters["partitioner"]`
+               is used.
         """
 
         utils._init()
@@ -236,22 +241,27 @@ class Mesh(object):
 
         if reorder is None:
             reorder = parameters["reorder_meshes"]
+        if partitioner is None:
+            partitioner = parameters["partitioner"]
         if plex is not None:
             self._from_dmplex(plex, geometric_dim=dim,
                               periodic_coords=periodic_coords,
-                              reorder=reorder)
+                              reorder=reorder, partitioner=partitioner)
             self.name = filename
         else:
             basename, ext = os.path.splitext(filename)
 
             if ext in ['.e', '.exo', '.E', '.EXO']:
-                self._from_exodus(filename, dim, reorder=reorder)
+                self._from_exodus(filename, dim,
+                                  reorder=reorder, partitioner=partitioner)
             elif ext in ['.cgns', '.CGNS']:
-                self._from_cgns(filename, dim)
+                self._from_cgns(filename, dim, partitioner=partitioner)
             elif ext in ['.msh']:
-                self._from_gmsh(filename, dim, periodic_coords, reorder=reorder)
+                self._from_gmsh(filename, dim, periodic_coords,
+                                reorder=reorder, partitioner=partitioner)
             elif ext in ['.node']:
-                self._from_triangle(filename, dim, periodic_coords, reorder=reorder)
+                self._from_triangle(filename, dim, periodic_coords,
+                                    reorder=reorder, partitioner=partitioner)
             else:
                 raise RuntimeError("Unknown mesh file format.")
 
@@ -265,7 +275,7 @@ class Mesh(object):
         self._coordinate_function = value
 
     def _from_dmplex(self, plex, geometric_dim=0,
-                     periodic_coords=None, reorder=None):
+                     periodic_coords=None, reorder=None, partitioner=None):
         """ Create mesh from DMPlex object """
 
         self._plex = plex
@@ -284,7 +294,7 @@ class Mesh(object):
         # Distribute the dm to all ranks
         if op2.MPI.comm.size > 1:
             with timed_region("Mesh: distribute"):
-                self.parallel_sf = plex.distribute(overlap=1)
+                self.parallel_sf = plex.distribute(overlap=1, partitioner=partitioner)
 
         self._plex = plex
 
@@ -366,7 +376,8 @@ class Mesh(object):
             measure._subdomain_data = self.coordinates
             measure._domain = self.ufl_domain()
 
-    def _from_gmsh(self, filename, dim=0, periodic_coords=None, reorder=None):
+    def _from_gmsh(self, filename, dim=0, periodic_coords=None,
+                   reorder=None, partitioner=None):
         """Read a Gmsh .msh file from `filename`"""
         basename, ext = os.path.splitext(filename)
         self.name = filename
@@ -386,9 +397,10 @@ class Mesh(object):
                 for f in faces:
                     gmsh_plex.setLabelValue("boundary_ids", f, bid)
 
-        self._from_dmplex(gmsh_plex, dim, periodic_coords, reorder=reorder)
+        self._from_dmplex(gmsh_plex, dim, periodic_coords,
+                          reorder=reorder, partitioner=partitioner)
 
-    def _from_exodus(self, filename, dim=0, reorder=None):
+    def _from_exodus(self, filename, dim=0, reorder=None, partitioner=None):
         self.name = filename
         plex = PETSc.DMPlex().createExodusFromFile(filename)
 
@@ -399,16 +411,17 @@ class Mesh(object):
             for f in faces:
                 plex.setLabelValue("boundary_ids", f, bid)
 
-        self._from_dmplex(plex, reorder=reorder)
+        self._from_dmplex(plex, reorder=reorder, partitioner=partitioner)
 
-    def _from_cgns(self, filename, dim=0, reorder=None):
+    def _from_cgns(self, filename, dim=0, reorder=None, partitioner=None):
         self.name = filename
         plex = PETSc.DMPlex().createCGNSFromFile(filename)
 
         #TODO: Add boundary IDs
-        self._from_dmplex(plex, reorder=reorder)
+        self._from_dmplex(plex, reorder=reorder, partitioner=partitioner)
 
-    def _from_triangle(self, filename, dim=0, periodic_coords=None, reorder=None):
+    def _from_triangle(self, filename, dim=0, periodic_coords=None,
+                       reorder=None, partitioner=None):
         """Read a set of triangle mesh files from `filename`"""
         self.name = filename
         basename, ext = os.path.splitext(filename)
@@ -469,7 +482,7 @@ class Mesh(object):
                     join = plex.getJoin(vertices)
                     plex.setLabelValue("boundary_ids", join[0], bid)
 
-        self._from_dmplex(plex, dim, periodic_coords, reorder=None)
+        self._from_dmplex(plex, dim, periodic_coords, reorder=None, partitioner=partitioner)
 
     @property
     def layers(self):
