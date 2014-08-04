@@ -218,6 +218,10 @@ class Mesh(object):
         # DMPlex will consider facets on the domain boundary to be
         # exterior, which is wrong.
         with timed_region("Mesh: label facets"):
+            # If we're not distributing (already in parallel), don't
+            # relabel the boundary, just label the interior facets.
+            label_boundary = op2.MPI.comm.size == 1 or distribute
+            dmplex.label_facets(self._plex, label_boundary=label_boundary)
             dmplex.label_facets(self._plex)
 
         if geometric_dim is None:
