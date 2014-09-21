@@ -71,6 +71,25 @@
   J[7] = vertex_coordinates[16][0] - vertex_coordinates[12][0]; \
   J[8] = vertex_coordinates[13][0] - vertex_coordinates[12][0];
 
+/* Compute Jacobian J for tensor product tet x interval embedded in R^4 */
+#define compute_jacobian_extr_tet(J, vertex_coordinates) \
+  J[ 0] = vertex_coordinates[ 2][0] - vertex_coordinates[ 0][0]; \
+  J[ 1] = vertex_coordinates[ 4][0] - vertex_coordinates[ 0][0]; \
+  J[ 2] = vertex_coordinates[ 6][0] - vertex_coordinates[ 0][0]; \
+  J[ 3] = vertex_coordinates[ 1][0] - vertex_coordinates[ 0][0]; \
+  J[ 4] = vertex_coordinates[10][0] - vertex_coordinates[ 8][0]; \
+  J[ 5] = vertex_coordinates[12][0] - vertex_coordinates[ 8][0]; \
+  J[ 6] = vertex_coordinates[14][0] - vertex_coordinates[ 8][0]; \
+  J[ 7] = vertex_coordinates[ 9][0] - vertex_coordinates[ 8][0]; \
+  J[ 8] = vertex_coordinates[18][0] - vertex_coordinates[16][0]; \
+  J[ 9] = vertex_coordinates[20][0] - vertex_coordinates[16][0]; \
+  J[10] = vertex_coordinates[22][0] - vertex_coordinates[16][0]; \
+  J[11] = vertex_coordinates[17][0] - vertex_coordinates[16][0]; \
+  J[12] = vertex_coordinates[26][0] - vertex_coordinates[24][0]; \
+  J[13] = vertex_coordinates[28][0] - vertex_coordinates[24][0]; \
+  J[14] = vertex_coordinates[30][0] - vertex_coordinates[24][0]; \
+  J[15] = vertex_coordinates[25][0] - vertex_coordinates[24][0];
+
 /* Jacobians for interior facets of different sorts */
 
 /* Compute Jacobian J for interval embedded in R^1 */
@@ -240,6 +259,42 @@
   K[6] = d_02 / det; \
   K[7] = d_12 / det; \
   K[8] = d_22 / det; } while (0)
+
+/* Compute Jacobian inverse K for tensor product tet x interval embedded in R^4 */
+#define compute_jacobian_inverse_extr_tet(K, det, J) \
+  do { const double d_00 = J[ 5]*(J[10]*J[15] - J[11]*J[14]) + J[ 6]*(J[11]*J[13] - J[ 9]*J[15]) + J[ 7]*(J[ 9]*J[14] - J[10]*J[13]); \
+  const double d_01 = J[ 6]*(J[11]*J[12] - J[ 8]*J[15]) + J[ 7]*(J[ 8]*J[14] - J[10]*J[12]) + J[ 4]*(J[10]*J[15] - J[11]*J[14]); \
+  const double d_02 = J[ 7]*(J[ 8]*J[13] - J[ 9]*J[12]) + J[ 4]*(J[ 9]*J[15] - J[11]*J[13]) + J[ 5]*(J[11]*J[12] - J[ 8]*J[15]); \
+  const double d_03 = J[ 4]*(J[ 9]*J[14] - J[10]*J[13]) + J[ 5]*(J[10]*J[12] - J[ 8]*J[14]) + J[ 6]*(J[ 8]*J[13] - J[ 9]*J[12]); \
+  const double d_10 = J[ 9]*(J[14]*J[ 3] - J[15]*J[ 2]) + J[10]*(J[15]*J[ 1] - J[13]*J[ 3]) + J[11]*(J[13]*J[ 2] - J[14]*J[ 1]); \
+  const double d_11 = J[10]*(J[15]*J[ 0] - J[12]*J[ 3]) + J[11]*(J[12]*J[ 2] - J[14]*J[ 0]) + J[ 8]*(J[14]*J[ 3] - J[15]*J[ 2]); \
+  const double d_12 = J[11]*(J[12]*J[ 1] - J[13]*J[ 0]) + J[ 8]*(J[13]*J[ 3] - J[15]*J[ 1]) + J[ 9]*(J[15]*J[ 0] - J[12]*J[ 3]); \
+  const double d_13 = J[ 8]*(J[13]*J[ 2] - J[14]*J[ 1]) + J[ 9]*(J[14]*J[ 0] - J[12]*J[ 2]) + J[10]*(J[12]*J[ 1] - J[13]*J[ 0]); \
+  const double d_20 = J[13]*(J[ 2]*J[ 7] - J[ 3]*J[ 6]) + J[14]*(J[ 3]*J[ 5] - J[ 1]*J[ 7]) + J[15]*(J[ 1]*J[ 6] - J[ 2]*J[ 5]); \
+  const double d_21 = J[14]*(J[ 3]*J[ 4] - J[ 0]*J[ 7]) + J[15]*(J[ 0]*J[ 6] - J[ 2]*J[ 4]) + J[12]*(J[ 2]*J[ 7] - J[ 3]*J[ 6]); \
+  const double d_22 = J[15]*(J[ 0]*J[ 5] - J[ 1]*J[ 4]) + J[12]*(J[ 1]*J[ 7] - J[ 3]*J[ 5]) + J[13]*(J[ 3]*J[ 4] - J[ 0]*J[ 7]); \
+  const double d_23 = J[12]*(J[ 1]*J[ 6] - J[ 2]*J[ 5]) + J[13]*(J[ 2]*J[ 4] - J[ 0]*J[ 6]) + J[14]*(J[ 0]*J[ 5] - J[ 1]*J[ 4]); \
+  const double d_30 = J[ 1]*(J[ 6]*J[11] - J[ 7]*J[10]) + J[ 2]*(J[ 7]*J[ 9] - J[ 5]*J[11]) + J[ 3]*(J[ 5]*J[10] - J[ 6]*J[ 9]); \
+  const double d_31 = J[ 2]*(J[ 7]*J[ 8] - J[ 4]*J[11]) + J[ 3]*(J[ 4]*J[10] - J[ 6]*J[ 8]) + J[ 0]*(J[ 6]*J[11] - J[ 7]*J[10]); \
+  const double d_32 = J[ 3]*(J[ 4]*J[ 9] - J[ 5]*J[ 8]) + J[ 0]*(J[ 5]*J[11] - J[ 7]*J[ 9]) + J[ 1]*(J[ 7]*J[ 8] - J[ 4]*J[11]); \
+  const double d_33 = J[ 0]*(J[ 5]*J[10] - J[ 6]*J[ 9]) + J[ 1]*(J[ 6]*J[ 8] - J[ 4]*J[10]) + J[ 2]*(J[ 4]*J[ 9] - J[ 5]*J[ 8]); \
+  det = J[0]*d_00 + J[4]*d_10 + J[8]*d_20 + J[12]*d_30; \
+  K[0]  = d_00 / det; \
+  K[1]  = d_10 / det; \
+  K[2]  = d_20 / det; \
+  K[3]  = d_30 / det; \
+  K[4]  = d_01 / det; \
+  K[5]  = d_11 / det; \
+  K[6]  = d_21 / det; \
+  K[7]  = d_31 / det; \
+  K[8]  = d_02 / det; \
+  K[9]  = d_12 / det; \
+  K[10] = d_22 / det; \
+  K[11] = d_32 / det; \
+  K[12] = d_03 / det; \
+  K[13] = d_13 / det; \
+  K[14] = d_23 / det; \
+  K[15] = d_33 / det; } while (0)
 
 /* --- Compute facet edge lengths --- */
 
