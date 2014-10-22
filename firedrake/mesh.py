@@ -176,9 +176,9 @@ class Mesh(object):
 
         if isinstance(meshfile, PETSc.DMPlex):
             self.name = "plexmesh"
-            self._setup_callback = self._from_dmplex(meshfile, dim, reorder,
-                                                     periodic_coords=periodic_coords,
-                                                     distribute=distribute)
+            self._from_dmplex(meshfile, dim, reorder,
+                              periodic_coords=periodic_coords,
+                              distribute=distribute)
             return
 
         basename, ext = os.path.splitext(meshfile)
@@ -207,9 +207,8 @@ class Mesh(object):
         self._coordinate_function = value
 
     def _init(self):
-        if self._setup_callback is not None:
+        if hasattr(self, '_setup_callback'):
             self._setup_callback(self)
-            self._setup_callback = None
 
     def _from_dmplex(self, plex, geometric_dim,
                      reorder, periodic_coords=None, distribute=True):
@@ -242,7 +241,7 @@ class Mesh(object):
         self._plex = plex
 
         def callback(self):
-            self._setup_callback = None
+            del self._setup_callback
             if op2.MPI.comm.size > 1:
                 # Grow the halo.  To do this we need a map from local
                 # to global numbers, this can be obtained by building
@@ -348,7 +347,7 @@ class Mesh(object):
                 measure._subdomain_data = self.coordinates
                 measure._domain = self.ufl_domain()
 
-        return callback
+        self._setup_callback = callback
 
     def _from_gmsh(self, filename, dim, reorder):
         """Read a Gmsh .msh file from `filename`"""
