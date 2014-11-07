@@ -215,10 +215,7 @@ class Mesh(object):
                need to supply a value for ``dim`` if the mesh is an
                immersed manifold (where the geometric and topological
                dimensions of entities are not the same).
-        :param periodic_coords: optional numpy array of coordinates
-               used to replace those read from the mesh file.  These
-               are only supported in 1D and must have enough entries
-               to be used as a DG1 field on the mesh.
+        :param periodic_coords: Does the mesh have periodic coords (DG coord field)?
         :param reorder: optional flag indicating whether to reorder
                meshes for better cache locality.  If not supplied the
                default value in :py:data:`parameters["reorder_meshes"]`
@@ -336,8 +333,9 @@ class Mesh(object):
                     raise NotImplementedError("Periodic coordinates in more than 1D are unsupported")
                 # We've been passed a periodic coordinate field, so use that.
                 self._coordinate_fs = functionspace.VectorFunctionSpace(self, "DG", 1)
+                coordinates = self._plex.getCoordinatesLocal().array
                 self.coordinates = function.Function(self._coordinate_fs,
-                                                     val=periodic_coords,
+                                                     val=coordinates,
                                                      name="Coordinates")
             else:
                 self._coordinate_fs = functionspace.VectorFunctionSpace(self, "Lagrange", 1)
@@ -972,8 +970,9 @@ class PeriodicIntervalMesh(Mesh):
 
         """Build the periodic Plex by hand"""
 
-        if MPI.comm.size > 1:
-            raise NotImplementedError("Periodic intervals not yet implemented in parallel")
+        if MPI.comm.rank != 0:
+            ncells = 0
+
         nvert = ncells
         nedge = ncells
         plex = PETSc.DMPlex().create()
@@ -986,35 +985,41 @@ class PeriodicIntervalMesh(Mesh):
             plex.setCone(e, [nedge+e, nedge+e+1])
             plex.setConeOrientation(e, [0, 0])
         # Connect v_(n-1) with v_0
-        plex.setCone(nedge-1, [nedge+nvert-1, nedge])
-        plex.setConeOrientation(nedge-1, [0, 0])
+        if MPI.comm.rank == 0:
+            plex.setCone(nedge-1, [nedge+nvert-1, nedge])
+            plex.setConeOrientation(nedge-1, [0, 0])
         plex.symmetrize()
         plex.stratify()
 
-        # Build coordinate section
-        dx = float(length) / ncells
-        coords = [x for x in np.arange(0, length + 0.01 * dx, dx)]
+        # Build coordinates
+        # We build a DG coordinate section (2 dofs per cell) and fill
+        # it in on rank 0 and pass it in to the plex such that we can
+        # subsequently distribute it.
+        cdm = plex.getCoordinateDM()
+        if MPI.comm.rank == 0:
+            coordsec = cdm.createSection([1], [0, 2])
+            cdm.setDefaultSection(coordsec)
+            dx = float(length) / ncells
 
-        coordsec = plex.getCoordinateSection()
-        coordsec.setChart(nedge, nedge+nvert)
-        for v in range(nedge, nedge+nvert):
-            coordsec.setDof(v, 1)
-        coordsec.setUp()
+            # HACK ALERT!
+            # Almost certainly not right when symbolic geometry stuff lands.
+            # Hopefully DMPlex will eventually give us a DG coordinate
+            # field.  Until then, we build one by hand.
+            coords = np.dstack((np.arange(dx, length + dx*0.01, dx),
+                                np.arange(0, length - dx*0.01, dx))).flatten()
+            # Last cell is back to front.
+            coords[-2:] = coords[-2:][::-1]
+
+        else:
+            coordsec = cdm.createSection([1], [0, 0])
+            cdm.setDefaultSection(coordsec)
+            coords = np.zeros(0, dtype=float)
+
         size = coordsec.getStorageSize()
-        coordvec = PETSc.Vec().createWithArray(coords, size=size)
+        coordvec = PETSc.Vec().createWithArray(coords, size=(size, None))
         plex.setCoordinatesLocal(coordvec)
-
-        dx = length / ncells
-        # HACK ALERT!
-        # Almost certainly not right when symbolic geometry stuff lands.
-        # Hopefully DMPlex will eventually give us a DG coordinate
-        # field.  Until then, we build one by hand.
-        coords = np.dstack((np.arange(dx, length + dx*0.01, dx),
-                            np.arange(0, length - dx*0.01, dx))).flatten()
-        # Last cell is back to front.
-        coords[-2:] = coords[-2:][::-1]
         Mesh.__init__(self, self.name, plex=plex,
-                      periodic_coords=coords, reorder=False)
+                      periodic_coords=True, reorder=False)
 
 
 class PeriodicUnitIntervalMesh(PeriodicIntervalMesh):
