@@ -148,7 +148,10 @@ class FFCKernel(DiskCached):
         # needs to be regenerated
         return md5(form.signature() + name + Kernel._backend.__name__ +
                    cls._firedrake_geometry_md5 + constants.FFC_VERSION +
-                   constants.PYOP2_VERSION + str(parameters["coffee"])).hexdigest()
+                   constants.PYOP2_VERSION + str(parameters["coffee"]) +
+                   parameters['form_compiler']['representation'] +
+                   str(parameters['form_compiler']['pyop2-ir']) +
+                   str(parameters['form_compiler']['optimize'])).hexdigest()
 
     def _needs_orientations(self, elements):
         if len(elements) == 0:
