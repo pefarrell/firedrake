@@ -47,6 +47,15 @@ class MeshHierarchy(mesh.Mesh):
 
             dm_hierarchy.append(rdm)
             dm = rdm
+            # Fix up coords if refining embedded circle or sphere
+            if hasattr(m, '_circle_manifold'):
+                coords = dm.getCoordinatesLocal().array.reshape(-1, 2)
+                scale = m._circle_manifold / np.linalg.norm(coords, axis=1).reshape(-1, 1)
+                coords *= scale
+            elif hasattr(m, '_icosahedral_sphere'):
+                coords = dm.getCoordinatesLocal().array.reshape(-1, 3)
+                scale = m._icosahedral_sphere / np.linalg.norm(coords, axis=1).reshape(-1, 1)
+                coords *= scale
 
         m._init()
         self._hierarchy = [m] + [mesh.Mesh(dm, dim=m.ufl_cell().geometric_dimension(),
