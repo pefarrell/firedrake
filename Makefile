@@ -16,6 +16,8 @@ clean:
 	@python setup.py clean > /dev/null 2>&1
 	@echo "    RM firedrake/dmplex.so"
 	-@rm -f firedrake/dmplex.so > /dev/null 2>&1
+	@echo "    RM firedrake/mgimpl.so"
+	-@rm -f firedrake/mgimpl.so > /dev/null 2>&1
 
 
 THREADS=1

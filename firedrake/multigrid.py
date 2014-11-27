@@ -5,6 +5,7 @@ from pyop2 import op2
 import pyop2.coffee.ast_base as ast
 
 import dmplex
+import mgimpl
 import function
 import functionspace
 import mesh
@@ -72,7 +73,7 @@ class MeshHierarchy(mesh.Mesh):
                                     self._hierarchy[1:],
                                     fpoint_ises):
             mc._fpointIS = fpointis
-            c2f = dmplex.coarse_to_fine_cells(mc, mf)
+            c2f = mgimpl.coarse_to_fine_cells(mc, mf)
             self._c2f_cells.append(c2f)
 
     def __iter__(self):
@@ -195,7 +196,7 @@ class FunctionSpaceHierarchy(object):
         if family == "Lagrange":
             if degree != 1:
                 raise RuntimeError
-            map_vals = dmplex.p1_coarse_fine_map(Vc, Vf, c2f)
+            map_vals = mgimpl.p1_coarse_fine_map(Vc, Vf, c2f)
 
             arity = map_vals.shape[1]
             map = op2.Map(self._cell_sets[level], Vf.node_set, arity, map_vals)

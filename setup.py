@@ -40,10 +40,12 @@ try:
     from Cython.Distutils import build_ext
     cmdclass['build_ext'] = build_ext
     dmplex_sources = ["firedrake/dmplex.pyx"]
+    mg_impl_sources = ["firedrake/mgimpl.pyx"]
     evtk_sources = ['evtk/cevtk.pyx']
 except ImportError:
     # No cython, dmplex.c must be generated in distributions.
     dmplex_sources = ["firedrake/dmplex.c"]
+    mg_impl_sources = ["firedrake/mgimpl.c"]
     evtk_sources = ['evtk/cevtk.c']
 
 if 'CC' not in env:
@@ -67,6 +69,13 @@ setup(name='firedrake',
       scripts=glob('scripts/*'),
       ext_modules=[Extension('firedrake.dmplex',
                              sources=dmplex_sources,
+                             include_dirs=include_dirs,
+                             libraries=["petsc"],
+                             extra_link_args=["-L%s/lib" % d for d in petsc_dirs] +
+                             ["-Wl,-rpath,%s/lib" % d for d in petsc_dirs] +
+                             ["-Wl,-rpath,%s/lib" % sys.prefix]),
+                   Extension('firedrake.mgimpl',
+                             sources=mg_impl_sources,
                              include_dirs=include_dirs,
                              libraries=["petsc"],
                              extra_link_args=["-L%s/lib" % d for d in petsc_dirs] +
