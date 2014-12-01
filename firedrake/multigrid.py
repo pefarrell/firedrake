@@ -66,7 +66,6 @@ class MeshHierarchy(mesh.Mesh):
                                  for i, dm in enumerate(dm_hierarchy)]
 
         self._ufl_cell = m.ufl_cell()
-        self._c2f_cells = []
         self._cells_vperm = []
         for m in self:
             m._init()
@@ -79,7 +78,6 @@ class MeshHierarchy(mesh.Mesh):
             P1c = functionspace.FunctionSpace(mc, 'CG', 1)
             P1f = functionspace.FunctionSpace(mf, 'CG', 1)
             self._cells_vperm.append(mgimpl.orient_cells(P1c, P1f, c2f))
-            self._c2f_cells.append(c2f)
 
     def __iter__(self):
         for m in self._hierarchy:
@@ -102,7 +100,7 @@ class ExtrudedMeshHierarchy(MeshHierarchy):
                                              gdim=gdim)
                            for m in mesh_hierarchy]
         self._ufl_cell = self[0].ufl_cell()
-        self._c2f_cells = mesh_hierarchy._c2f_cells
+        self._cells_vperm = self._hierarchy._cells_vperm
 
 
 class FunctionSpaceHierarchy(object):
@@ -166,7 +164,7 @@ class FunctionSpaceHierarchy(object):
         family = element.family()
         degree = element.degree()
 
-        c2f = self._mesh_hierarchy._c2f_cells[level]
+        c2f, vperm = self._mesh_hierarchy._cells_vperm[level]
 
         if isinstance(self._mesh_hierarchy, ExtrudedMeshHierarchy):
             if not (element._A.family() == "Discontinuous Lagrange" and
@@ -184,7 +182,6 @@ class FunctionSpaceHierarchy(object):
             self._map_cache[level] = map
             return map
 
-        c2f, vperm = self._mesh_hierarchy._cells_vperm[level]
         map_vals = mgimpl.create_cell_node_map(Vc, Vf, c2f, vperm)
         map = op2.Map(self._cell_sets[level],
                       Vf.node_set,
