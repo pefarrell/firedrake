@@ -36,7 +36,9 @@ from functionspace import *
 from io import *
 from linear_solver import *
 from mesh import *
-from multigrid import *
+from mgfunction import *
+from mgfunctionspace import *
+from mgmesh import *
 from norms import *
 from nullspace import *
 from parameters import *

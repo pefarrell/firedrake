@@ -1,9 +1,9 @@
 from firedrake import *
 from firedrake.petsc import PETSc
 import ufl
-mesh = UnitSquareMesh(20, 20)
+mesh = UnitSquareMesh(10, 10)
 
-mh = MeshHierarchy(mesh, 6)
+mh = MeshHierarchy(mesh, 4)
 
 fh = FunctionSpaceHierarchy(mh, 'CG', 1)
 

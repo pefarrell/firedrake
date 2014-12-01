@@ -1,0 +1,96 @@
+import numpy as np
+
+import dmplex
+import functionspace
+import mesh
+import mgimpl
+
+
+__all__ = ["MeshHierarchy", "ExtrudedMeshHierarchy"]
+
+
+class MeshHierarchy(mesh.Mesh):
+    """Build a hierarchy of meshes by uniformly refining a coarse mesh"""
+    def __init__(self, m, refinement_levels, reorder=None):
+        """
+        :arg m: the coarse :class:`~.Mesh` to refine
+        :arg refinement_levels: the number of levels of refinement
+        :arg reorder: optional flag indicating whether to reorder the
+             refined meshes.
+        """
+        m._plex.setRefinementUniform(True)
+        dm_hierarchy = []
+
+        dm = m._plex
+        fpoint_ises = []
+        for i in range(refinement_levels):
+            rdm = dm.refine()
+            fpoint_ises.append(dm.createCoarsePointIS())
+            # Remove interior facet label (re-construct from
+            # complement of exterior facets).  Necessary because the
+            # refinement just marks points "underneath" the refined
+            # facet with the appropriate label.  This works for
+            # exterior, but not marked interior facets
+            rdm.removeLabel("interior_facets")
+            # Remove vertex (and edge) points from labels on exterior
+            # facets.  Interior facets will be relabeled in Mesh
+            # construction below.
+            dmplex.filter_exterior_facet_labels(rdm)
+            rdm.removeLabel("op2_core")
+            rdm.removeLabel("op2_non_core")
+            rdm.removeLabel("op2_exec_halo")
+            rdm.removeLabel("op2_non_exec_halo")
+
+            dm_hierarchy.append(rdm)
+            dm = rdm
+            # Fix up coords if refining embedded circle or sphere
+            if hasattr(m, '_circle_manifold'):
+                coords = dm.getCoordinatesLocal().array.reshape(-1, 2)
+                scale = m._circle_manifold / np.linalg.norm(coords, axis=1).reshape(-1, 1)
+                coords *= scale
+            elif hasattr(m, '_icosahedral_sphere'):
+                coords = dm.getCoordinatesLocal().array.reshape(-1, 3)
+                scale = m._icosahedral_sphere / np.linalg.norm(coords, axis=1).reshape(-1, 1)
+                coords *= scale
+
+        m._init()
+        self._hierarchy = [m] + [mesh.Mesh(dm, dim=m.ufl_cell().geometric_dimension(),
+                                           distribute=False, reorder=reorder)
+                                 for i, dm in enumerate(dm_hierarchy)]
+
+        self._ufl_cell = m.ufl_cell()
+        self._cells_vperm = []
+        for m in self:
+            m._init()
+
+        for mc, mf, fpointis in zip(self._hierarchy[:-1],
+                                    self._hierarchy[1:],
+                                    fpoint_ises):
+            mc._fpointIS = fpointis
+            c2f = mgimpl.coarse_to_fine_cells(mc, mf)
+            P1c = functionspace.FunctionSpace(mc, 'CG', 1)
+            P1f = functionspace.FunctionSpace(mf, 'CG', 1)
+            self._cells_vperm.append(mgimpl.orient_cells(P1c, P1f, c2f))
+
+    def __iter__(self):
+        for m in self._hierarchy:
+            yield m
+
+    def __len__(self):
+        return len(self._hierarchy)
+
+    def __getitem__(self, idx):
+        return self._hierarchy[idx]
+
+
+class ExtrudedMeshHierarchy(MeshHierarchy):
+    def __init__(self, mesh_hierarchy, layers, kernel=None, layer_height=None,
+                 extrusion_type='uniform', gdim=None):
+        self._base_hierarchy = mesh_hierarchy
+        self._hierarchy = [mesh.ExtrudedMesh(m, layers, kernel=kernel,
+                                             layer_height=layer_height,
+                                             extrusion_type=extrusion_type,
+                                             gdim=gdim)
+                           for m in mesh_hierarchy]
+        self._ufl_cell = self[0].ufl_cell()
+        self._cells_vperm = self._base_hierarchy._cells_vperm
