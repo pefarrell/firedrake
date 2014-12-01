@@ -1,4 +1,5 @@
 import numpy as np
+import ufl
 
 from pyop2 import op2
 
@@ -7,30 +8,15 @@ import mgimpl
 import mgmesh
 
 
-__all__ = ["FunctionSpaceHierarchy"]
+__all__ = ["FunctionSpaceHierarchy", "VectorFunctionSpaceHierarchy",
+           "MixedFunctionSpaceHierarchy"]
 
 
-class FunctionSpaceHierarchy(object):
-    """Build a hierarchy of function spaces.
+class BaseHierarchy(object):
 
-    Given a hierarchy of meshes, this constructs a hierarchy of
-    function spaces, with the property that every coarse space is a
-    subspace of the fine spaces that are a refinement of it.
-    """
-    def __init__(self, mesh_hierarchy, family, degree=None,
-                 name=None, vfamily=None, vdegree=None):
-        """
-        :arg mesh_hierarchy: a :class:`.MeshHierarchy` to build the
-             function spaces on.
-        :arg family: the function space family
-        :arg degree: the degree of the function space
-        """
+    def __init__(self, mesh_hierarchy, fses):
         self._mesh_hierarchy = mesh_hierarchy
-        self._hierarchy = [functionspace.FunctionSpace(m, family, degree=degree,
-                                                       name=name, vfamily=vfamily,
-                                                       vdegree=vdegree)
-                           for m in self._mesh_hierarchy]
-
+        self._hierarchy = fses
         self._map_cache = {}
         self._cell_sets = tuple(op2.LocalSet(m.cell_set) for m in self._mesh_hierarchy)
         self._ufl_element = self[0].ufl_element()
@@ -94,3 +80,41 @@ class FunctionSpaceHierarchy(object):
                       map_vals)
         self._map_cache[level] = map
         return map
+
+
+class FunctionSpaceHierarchy(BaseHierarchy):
+    """Build a hierarchy of function spaces.
+
+    Given a hierarchy of meshes, this constructs a hierarchy of
+    function spaces, with the property that every coarse space is a
+    subspace of the fine spaces that are a refinement of it.
+    """
+    def __init__(self, mesh_hierarchy, family, degree=None,
+                 name=None, vfamily=None, vdegree=None):
+        """
+        :arg mesh_hierarchy: a :class:`.MeshHierarchy` to build the
+             function spaces on.
+        :arg family: the function space family
+        :arg degree: the degree of the function space
+        """
+        fses = [functionspace.FunctionSpace(m, family, degree=degree,
+                                            name=name, vfamily=vfamily,
+                                            vdegree=vdegree)
+                for m in mesh_hierarchy]
+        super(FunctionSpaceHierarchy, self).__init__(mesh_hierarchy, fses)
+
+
+class VectorFunctionSpaceHierarchy(BaseHierarchy):
+
+    def __init__(self, mesh_hierarchy, family, degree, dim=None, name=None, vfamily=None, vdegree=None):
+        fses = [functionspace.VectorFunctionSpace(m, family, degree,
+                                                  dim=dim, name=name, vfamily=vfamily,
+                                                  vdegree=vdegree)
+                for m in mesh_hierarchy]
+        super(VectorFunctionSpaceHierarchy, self).__init__(mesh_hierarchy, fses)
+
+
+class MixedFunctionSpaceHierarchy(object):
+    def __init__(self, spaces, name=None):
+        self._spaces = spaces
+        self._ufl_element = ufl.MixedElement(*[fs[0].ufl_element() for fs in self._spaces])
