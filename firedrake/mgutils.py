@@ -1,6 +1,8 @@
 from itertools import permutations
 import numpy as np
 
+from pyop2 import op2
+
 from firedrake.petsc import PETSc
 
 
@@ -196,7 +198,7 @@ def get_injection_kernel(fiat_element, unique_indices):
          }
     }""" % (format_array_literal("weights", weights),
             weights.shape[0], weights.shape[1])
-    return k
+    return op2.Kernel(k, "injection")
 
 
 def get_prolongation_kernel(fiat_element, unique_indices):
@@ -214,21 +216,21 @@ def get_prolongation_kernel(fiat_element, unique_indices):
         }
     }""" % (format_array_literal("weights", weights),
             weights.shape[0], weights.shape[1])
-    return k
+    return op2.Kernel(k, "prolongation")
 
 
 def get_restriction_kernel(fiat_element, unique_indices):
     weights = get_restriction_weights(fiat_element)[unique_indices].T
     k = """
-    void restriction(double coarse[%d], double **fine)
+    void restriction(double coarse[%d], double **fine, double **count_weights)
     {
         static const %s;
 
         for ( int i = 0; i < %d; i++ ) {
             for ( int j = 0; j < %d; j++ ) {
-                coarse[i] += fine[j][0] * weights[i][j];
+                coarse[i] += fine[j][0] * weights[i][j] * count_weights[j][0];
             }
         }
     }""" % (weights.shape[0], format_array_literal("weights", weights),
             weights.shape[0], weights.shape[1])
-    return k
+    return op2.Kernel(k, "restriction")
