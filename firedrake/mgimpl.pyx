@@ -248,21 +248,9 @@ def create_cell_node_map(coarse, fine, np.ndarray[PetscInt, ndim=2, mode="c"] c2
     # We're going to uniquify the maps we get out, so the first step
     # is to apply the permutation to one entry to find out which
     # indices we need to keep.
-    cell_nodes = old_cell_map[0, :]
-    order = -np.ones_like(cell_nodes)
-
-    for i in range(4):
-        p = permutations[hash_perm(vertex_perm[0, i*3], vertex_perm[0, i*3 + 1]), :]
-        order[i*ndof:(i+1)*ndof] = cell_nodes[i*ndof:(i+1)*ndof][p]
-
-    indices = np.empty(len(np.unique(order)), dtype=PETSc.IntType)
-    seen = set()
-    i = 0
-    for j, n in enumerate(order):
-        if n not in seen:
-            indices[i] = j
-            i += 1
-            seen.add(n)
+    indices = mgutils.get_unique_indices(coarse.fiat_element,
+                                         old_cell_map[0, :],
+                                         vertex_perm[0, :])
 
     nfdof = indices.shape[0]
     new_cell_map = -np.ones((ncoarse, nfdof), dtype=PETSc.IntType)

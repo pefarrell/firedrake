@@ -84,6 +84,25 @@ def get_node_permutations(fiat_element):
     return result
 
 
+def get_unique_indices(fiat_element, nonunique_map, vperm):
+    perms = get_node_permutations(fiat_element)
+    order = -np.ones_like(nonunique_map)
+    ndof = len(order)/4
+    for i in range(4):
+        p = perms[tuple(vperm[i*3:(i+1)*3])]
+        order[i*ndof:(i+1)*ndof] = nonunique_map[i*ndof:(i+1)*ndof][p]
+
+    indices = np.empty(len(np.unique(order)), dtype=PETSc.IntType)
+    seen = set()
+    i = 0
+    for j, n in enumerate(order):
+        if n not in seen:
+            indices[i] = j
+            i += 1
+            seen.add(n)
+    return indices
+
+
 def get_restriction_weights(fiat_element):
     """Get the restriction weights for an element
 
