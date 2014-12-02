@@ -64,15 +64,18 @@ class BaseHierarchy(object):
                 }""" % (self.dim, self.cell_node_map(0).arity,
                         1.0/self.cell_node_map(0).arity), "injection")
         else:
-            element = self[0].fiat_element
-            omap = self[1].cell_node_map().values
-            c2f, vperm = self._mesh_hierarchy._cells_vperm[0]
-            indices = mgutils.get_unique_indices(element,
-                                                 omap[c2f[0, :], ...].reshape(-1),
-                                                 vperm[0, :])
-            self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices, self.dim)
-            self._restrict_kernel = mgutils.get_restriction_kernel(element, indices, self.dim)
-            self._inject_kernel = mgutils.get_injection_kernel(element, indices, self.dim)
+            try:
+                element = self[0].fiat_element
+                omap = self[1].cell_node_map().values
+                c2f, vperm = self._mesh_hierarchy._cells_vperm[0]
+                indices = mgutils.get_unique_indices(element,
+                                                     omap[c2f[0, :], ...].reshape(-1),
+                                                     vperm[0, :])
+                self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices, self.dim)
+                self._restrict_kernel = mgutils.get_restriction_kernel(element, indices, self.dim)
+                self._inject_kernel = mgutils.get_injection_kernel(element, indices, self.dim)
+            except:
+                pass
 
     def __len__(self):
         return len(self._hierarchy)
