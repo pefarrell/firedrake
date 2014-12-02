@@ -217,7 +217,8 @@ class BaseHierarchy(object):
                      fine.dat(op2.WRITE, self.cell_node_map(level)),
                      coarse.dat(op2.READ, coarse.cell_node_map()))
 
-
+    def __mul__(self, other):
+        return MixedFunctionSpaceHierarchy([self, other])
 
 
 class FunctionSpaceHierarchy(BaseHierarchy):
@@ -255,6 +256,11 @@ class VectorFunctionSpaceHierarchy(BaseHierarchy):
 
 
 class MixedFunctionSpaceHierarchy(object):
+
     def __init__(self, spaces, name=None):
+        assert all(isinstance(s, BaseHierarchy) for s in spaces)
         self._spaces = spaces
         self._ufl_element = ufl.MixedElement(*[fs[0].ufl_element() for fs in self._spaces])
+
+    def __mul__(self, other):
+        return MixedFunctionSpaceHierarchy([self._spaces, other])
