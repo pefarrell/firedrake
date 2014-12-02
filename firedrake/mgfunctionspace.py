@@ -28,11 +28,42 @@ class BaseHierarchy(object):
         family = element.family()
         degree = element.degree()
         self._P0 = ((family == "OuterProductElement" and
-                      (element._A.family() == "Discontinuous Lagrange" and
-                       element._B.family() == "Discontinuous Lagrange" and
-                       degree == (0, 0))) or
-                     (family == "Discontinuous Lagrange" and degree == 0))
-        if not self._P0:
+                     (element._A.family() == "Discontinuous Lagrange" and
+                      element._B.family() == "Discontinuous Lagrange" and
+                      degree == (0, 0))) or
+                    (family == "Discontinuous Lagrange" and degree == 0))
+        if self._P0:
+            self._prolong_kernel = op2.Kernel("""
+                void prolongation(double **fine, double **coarse)
+                {
+                    for ( int k = 0; k < %d; k++ ) {
+                        for ( int i = 0; i < %d; i++ ) {
+                            fine[i][k] = coarse[0][k];
+                        }
+                    }
+                }""" % (self.dim, self.cell_node_map(0).arity), "prolongation")
+            self._restrict_kernel = op2.Kernel("""
+                void restriction(double coarse[%d], double **fine)
+                {
+                    for ( int k = 0; k < %d; k++ ) {
+                        for ( int i = 0; i < %d; i++ ) {
+                            coarse[k] += fine[i][k];
+                        }
+                    }
+                }""" % (self.dim, self.dim, self.cell_node_map(0).arity), "restriction")
+            self._inject_kernel = op2.Kernel("""
+                void injection(double **coarse, double **fine)
+                {
+                    for ( int k = 0; k < %d; k++ ) {
+                        coarse[0][k] = 0;
+                        for ( int i = 0; i < %d; i++ ) {
+                            coarse[0][k] += fine[i][k];
+                        }
+                        coarse[0][k] *= %g;
+                    }
+                }""" % (self.dim, self.cell_node_map(0).arity,
+                        1.0/self.cell_node_map(0).arity), "injection")
+        else:
             element = self[0].fiat_element
             omap = self[1].cell_node_map().values
             c2f, vperm = self._mesh_hierarchy._cells_vperm[0]
@@ -42,7 +73,6 @@ class BaseHierarchy(object):
             self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices, self.dim)
             self._restrict_kernel = mgutils.get_restriction_kernel(element, indices, self.dim)
             self._inject_kernel = mgutils.get_injection_kernel(element, indices, self.dim)
-
 
     def __len__(self):
         return len(self._hierarchy)
@@ -114,7 +144,7 @@ class BaseHierarchy(object):
         # elementwise over the coarse cells.  So we need a count of
         # how many times we did this to weight the final contribution
         # appropriately.
-        if self._restriction_weights is None:
+        if not self._P0 and self._restriction_weights is None:
             if isinstance(self.ufl_element(), ufl.VectorElement):
                 element = self.ufl_element().sub_elements()[0]
                 restriction_fs = FunctionSpaceHierarchy(self._mesh_hierarchy, element)
@@ -140,13 +170,16 @@ class BaseHierarchy(object):
 
         coarse = residual[level-1]
         fine = residual[level]
-        weights = self._restriction_weights[level]
 
+        args = [coarse.dat(op2.INC, coarse.cell_node_map()[op2.i[0]]),
+                fine.dat(op2.READ, self.cell_node_map(level-1))]
+
+        if not self._P0:
+            weights = self._restriction_weights[level]
+            args.append(weights.dat(op2.READ, self._restriction_weights.cell_node_map(level-1)))
         coarse.dat.zero()
         op2.par_loop(self._restrict_kernel, self._cell_sets[level-1],
-                     coarse.dat(op2.INC, coarse.cell_node_map()[op2.i[0]]),
-                     fine.dat(op2.READ, self.cell_node_map(level-1)),
-                     weights.dat(op2.READ, self._restriction_weights.cell_node_map(level-1)))
+                     *args)
 
     def inject(self, state, level):
         """
