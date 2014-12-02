@@ -101,6 +101,7 @@ class FunctionSpaceHierarchy(BaseHierarchy):
                                             name=name, vfamily=vfamily,
                                             vdegree=vdegree)
                 for m in mesh_hierarchy]
+        self.dim = 1
         super(FunctionSpaceHierarchy, self).__init__(mesh_hierarchy, fses)
 
 
@@ -111,6 +112,7 @@ class VectorFunctionSpaceHierarchy(BaseHierarchy):
                                                   dim=dim, name=name, vfamily=vfamily,
                                                   vdegree=vdegree)
                 for m in mesh_hierarchy]
+        self.dim = fses[0].dim
         super(VectorFunctionSpaceHierarchy, self).__init__(mesh_hierarchy, fses)
 
 
