@@ -2,6 +2,7 @@ import numpy as np
 import ufl
 
 from pyop2 import op2
+from pyop2.utils import flatten
 
 import functionspace
 import mgfunction
@@ -259,8 +260,28 @@ class MixedFunctionSpaceHierarchy(object):
 
     def __init__(self, spaces, name=None):
         assert all(isinstance(s, BaseHierarchy) for s in spaces)
+        self._hierarchy = tuple(functionspace.MixedFunctionSpace(s) for s in zip(*spaces))
         self._spaces = spaces
-        self._ufl_element = ufl.MixedElement(*[fs[0].ufl_element() for fs in self._spaces])
+        self._ufl_element = self._hierarchy[0].ufl_element()
 
     def __mul__(self, other):
         return MixedFunctionSpaceHierarchy([self._spaces, other])
+
+    def __iter__(self):
+        for fs in self._hierarchy:
+            yield fs
+
+    def split(self):
+        return self._spaces
+
+    def restrict(self, residual, level):
+        for res, fs in zip(residual.split(), self.split()):
+            fs.restrict(res, level)
+
+    def prolong(self, solution, level):
+        for sol, fs in zip(solution.split(), self.split()):
+            fs.prolong(sol, level)
+
+    def inject(self, state, level):
+        for st, fs in zip(state.split(), self.split()):
+            fs.inject(st, level)

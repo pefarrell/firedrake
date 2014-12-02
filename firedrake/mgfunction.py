@@ -1,4 +1,5 @@
 import function
+import mgfunctionspace
 
 
 __all__ = ["FunctionHierarchy"]
@@ -6,7 +7,7 @@ __all__ = ["FunctionHierarchy"]
 
 class FunctionHierarchy(object):
     """Build a hierarchy of :class:`~.Function`\s"""
-    def __init__(self, fs_hierarchy):
+    def __init__(self, fs_hierarchy, functions=None):
         """
         :arg fs_hierarchy: the :class:`~.FunctionSpaceHierarchy` to build on.
 
@@ -19,7 +20,20 @@ class FunctionHierarchy(object):
         else:
             self._function_space = fs_hierarchy
 
-        self._hierarchy = [function.Function(f) for f in fs_hierarchy]
+        if functions is not None:
+            assert all(isinstance(f, function.Function) for f in functions)
+            assert len(functions) == len(self._function_space)
+            self._hierarchy = tuple(functions)
+        else:
+            self._hierarchy = tuple(function.Function(f) for f in fs_hierarchy)
+
+        if isinstance(self._function_space, mgfunctionspace.MixedFunctionSpaceHierarchy):
+            split = []
+            for i, fs in enumerate(self.function_space().split()):
+                split.append(FunctionHierarchy(fs, [f.split()[i] for f in self]))
+            self._split = tuple(split)
+        else:
+            self._split = (self, )
 
     def __iter__(self):
         for f in self._hierarchy:
@@ -30,6 +44,9 @@ class FunctionHierarchy(object):
 
     def __getitem__(self, idx):
         return self._hierarchy[idx]
+
+    def split(self):
+        return self._split
 
     def function_space(self):
         return self._function_space
