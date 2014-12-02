@@ -41,9 +41,9 @@ class FunctionHierarchy(object):
             indices = mgutils.get_unique_indices(element,
                                                  omap[c2f[0, :], ...].reshape(-1),
                                                  vperm[0, :])
-            self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices)
-            self._restrict_kernel = mgutils.get_restriction_kernel(element, indices)
-            self._inject_kernel = mgutils.get_injection_kernel(element, indices)
+            self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices, self._function_space.dim)
+            self._restrict_kernel = mgutils.get_restriction_kernel(element, indices, self._function_space.dim)
+            self._inject_kernel = mgutils.get_injection_kernel(element, indices, self._function_space.dim)
 
     def __iter__(self):
         for f in self._hierarchy:
@@ -121,9 +121,9 @@ class FunctionHierarchy(object):
         weights = fs._restriction_weights[level]
         coarse.dat.zero()
         op2.par_loop(self._restrict_kernel, self.function_space()._cell_sets[level-1],
-                     coarse.dat(op2.INC, coarse.cell_node_map()[op2.i[0]], flatten=True),
-                     fine.dat(op2.READ, self.cell_node_map(level-1), flatten=True),
-                     weights.dat(op2.READ, self.cell_node_map(level-1), flatten=True))
+                     coarse.dat(op2.INC, coarse.cell_node_map()[op2.i[0]]),
+                     fine.dat(op2.READ, self.cell_node_map(level-1)),
+                     weights.dat(op2.READ, self.cell_node_map(level-1)))
 
     def inject(self, level):
         """Inject from a fine to the next coarsest hierarchy level.

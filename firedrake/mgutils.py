@@ -183,54 +183,58 @@ def format_array_literal(name, arr):
                                                                    'vals': vals}
 
 
-def get_injection_kernel(fiat_element, unique_indices):
+def get_injection_kernel(fiat_element, unique_indices, dim=1):
     weights = get_injection_weights(fiat_element)[unique_indices].T
     k = """
     void injection(double **coarse, double **fine)
     {
          static const %s;
 
-         for ( int i = 0; i < %d; i++ ) {
-             coarse[i][0] = 0;
-             for (int j = 0; j < %d; j++ ) {
-                 coarse[i][0] += fine[j][0] * weights[i][j];
+         for ( int k = 0; k < %d; k++ ) {
+             for ( int i = 0; i < %d; i++ ) {
+                 coarse[i][k] = 0;
+                 for (int j = 0; j < %d; j++ ) {
+                     coarse[i][k] += fine[j][k] * weights[i][j];
+                 }
              }
          }
-    }""" % (format_array_literal("weights", weights),
+    }""" % (format_array_literal("weights", weights), dim,
             weights.shape[0], weights.shape[1])
     return op2.Kernel(k, "injection")
 
 
-def get_prolongation_kernel(fiat_element, unique_indices):
+def get_prolongation_kernel(fiat_element, unique_indices, dim=1):
     weights = get_restriction_weights(fiat_element)[unique_indices]
     k = """
     void prolongation(double **fine, double **coarse)
     {
         static const %s;
-
-        for ( int i = 0; i < %d; i++ ) {
-            fine[i][0] = 0;
-            for ( int j = 0; j < %d; j++ ) {
-                fine[i][0] += coarse[j][0] * weights[i][j];
+        for ( int k = 0; k < %d; k++ ) {
+            for ( int i = 0; i < %d; i++ ) {
+                fine[i][k] = 0;
+                for ( int j = 0; j < %d; j++ ) {
+                    fine[i][k] += coarse[j][k] * weights[i][j];
+                }
             }
         }
-    }""" % (format_array_literal("weights", weights),
+    }""" % (format_array_literal("weights", weights), dim,
             weights.shape[0], weights.shape[1])
     return op2.Kernel(k, "prolongation")
 
 
-def get_restriction_kernel(fiat_element, unique_indices):
+def get_restriction_kernel(fiat_element, unique_indices, dim=1):
     weights = get_restriction_weights(fiat_element)[unique_indices].T
     k = """
     void restriction(double coarse[%d], double **fine, double **count_weights)
     {
         static const %s;
-
-        for ( int i = 0; i < %d; i++ ) {
-            for ( int j = 0; j < %d; j++ ) {
-                coarse[i] += fine[j][0] * weights[i][j] * count_weights[j][0];
+        for ( int k = 0; k < %d; k++ ) {
+            for ( int i = 0; i < %d; i++ ) {
+                for ( int j = 0; j < %d; j++ ) {
+                    coarse[i*%d + k] += fine[j][k] * weights[i][j] * count_weights[j][0];
+                }
             }
         }
-    }""" % (weights.shape[0], format_array_literal("weights", weights),
-            weights.shape[0], weights.shape[1])
+    }""" % (weights.shape[0]*dim, format_array_literal("weights", weights), dim,
+            weights.shape[0], weights.shape[1], dim)
     return op2.Kernel(k, "restriction")
