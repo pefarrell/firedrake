@@ -25,26 +25,6 @@ class FunctionHierarchy(object):
 
         self._hierarchy = [function.Function(f) for f in fs_hierarchy]
 
-        element = self._function_space[0].ufl_element()
-        family = element.family()
-        degree = element.degree()
-        self._dg0 = ((family == "OuterProductElement" and
-                      (element._A.family() == "Discontinuous Lagrange" and
-                       element._B.family() == "Discontinuous Lagrange" and
-                       degree == (0, 0))) or
-                     (family == "Discontinuous Lagrange" and degree == 0))
-
-        if not self._dg0:
-            element = self._function_space[0].fiat_element
-            omap = self[1].cell_node_map().values
-            c2f, vperm = self._function_space._mesh_hierarchy._cells_vperm[0]
-            indices = mgutils.get_unique_indices(element,
-                                                 omap[c2f[0, :], ...].reshape(-1),
-                                                 vperm[0, :])
-            self._prolong_kernel = mgutils.get_prolongation_kernel(element, indices, self._function_space.dim)
-            self._restrict_kernel = mgutils.get_restriction_kernel(element, indices, self._function_space.dim)
-            self._inject_kernel = mgutils.get_injection_kernel(element, indices, self._function_space.dim)
-
     def __iter__(self):
         for f in self._hierarchy:
             yield f
@@ -69,14 +49,10 @@ class FunctionHierarchy(object):
         if not 0 <= level < len(self) - 1:
             raise RuntimeError("Requested coarse level %d outside permissible range [0, %d)" %
                                (level, len(self) - 1))
-        if self._dg0:
+        if self.function_space()._P0:
             self._prolong_dg0(level)
             return
-        coarse = self[level]
-        fine = self[level+1]
-        op2.par_loop(self._prolong_kernel, self.function_space()._cell_sets[level],
-                     fine.dat(op2.WRITE, self.cell_node_map(level)),
-                     coarse.dat(op2.READ, coarse.cell_node_map()))
+        self.function_space().prolong(self, level)
 
     def restrict(self, level, is_solution=False):
         """Restrict from a fine to the next coarsest hierarchy level.
@@ -94,36 +70,10 @@ class FunctionHierarchy(object):
             raise RuntimeError("Requested fine level %d outside permissible range [1, %d)" %
                                (level, len(self)))
 
-        if self._dg0:
+        if self.function_space()._P0:
             self._restrict_dg0(level, is_solution=is_solution)
             return
-        fs = self.function_space()
-        if fs._restriction_weights is None:
-            fs._restriction_weights = FunctionHierarchy(fs)
-            k = """
-            static inline void weights(double weight[%d])
-            {
-                for ( int i = 0; i < %d; i++ ) {
-                    weight[i] += 1.0;
-                }
-            }""" % (self.cell_node_map(0).arity, self.cell_node_map(0).arity)
-            fn = fs._restriction_weights
-            k = op2.Kernel(k, 'weights')
-            # Count number of times cell loop hits
-            for lvl in range(1, len(fn)):
-                op2.par_loop(k, self.function_space()._cell_sets[lvl-1],
-                             fn[lvl].dat(op2.INC, fn.cell_node_map(lvl-1)[op2.i[0]]))
-                # Inverse, since we're using these as weights, not
-                # counts.
-                fn[lvl].assign(1.0/fn[lvl])
-        coarse = self[level-1]
-        fine = self[level]
-        weights = fs._restriction_weights[level]
-        coarse.dat.zero()
-        op2.par_loop(self._restrict_kernel, self.function_space()._cell_sets[level-1],
-                     coarse.dat(op2.INC, coarse.cell_node_map()[op2.i[0]]),
-                     fine.dat(op2.READ, self.cell_node_map(level-1)),
-                     weights.dat(op2.READ, self.cell_node_map(level-1)))
+        self.function_space().restrict(self, level)
 
     def inject(self, level):
         """Inject from a fine to the next coarsest hierarchy level.
@@ -133,11 +83,7 @@ class FunctionHierarchy(object):
             raise RuntimeError("Requested fine level %d outside permissible range [1, %d)" %
                                (level, len(self)))
 
-        coarse = self[level-1]
-        fine = self[level]
-        op2.par_loop(self._inject_kernel, self.function_space()._cell_sets[level-1],
-                     coarse.dat(op2.WRITE, coarse.cell_node_map()),
-                     fine.dat(op2.READ, self.cell_node_map(level-1)))
+        self.function_space().inject(self, level)
 
     def _prolong_dg0(self, level):
         c2f_map = self.cell_node_map(level)
